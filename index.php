@@ -20,6 +20,6 @@
         </style>
     </head>
     <body>
-        <div  id="game-canvas"></div>
+        <div id="game-canvas"></div>
     </body>
 </html>
