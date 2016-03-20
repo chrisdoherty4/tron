@@ -8,7 +8,7 @@
         <script type="text/javascript">
             $(function () {
                 var game = Tron.instance("game-canvas");
-                game.start();
+                Tron.startWhenLoaded(game);
             });
         </script>
         

@@ -3,6 +3,26 @@ $(function() {
     (function (window) {
         var Tron = {
             /**
+             * Global configuration of Tron
+             */
+            config: {
+                /**
+                 * Defines the starting scene for the game.
+                 */
+                startingScene: 'Debug',
+                
+                /**
+                 * Defines the timeout for explosions. Once timed out, explosion will destroy,
+                 */
+                explosionTimeout: 3000,
+            },
+            
+            /**
+             * Determines if the assets have been loaded or not.
+             */
+            _assetsLoaded: false,
+            
+            /**
              * Holds the players created for this game.
              */
             _player: null,
@@ -21,7 +41,10 @@ $(function() {
             /**
              * Defines the name of the game scene identifier when registered with Crafty.
              */
-            _gameScene: 'game',
+            _scenes: {
+                game: 'Game',
+                debug: 'Debug',
+            },
             
             /**
              * Tron.init
@@ -37,12 +60,9 @@ $(function() {
                 
                 // Setup the game
                 this._setupCanvas(canvasID);
-                
-                // Define our crafty objects.
                 this._defineObjects();
-                
-                // Create the game scene in preparation for the game to begin.
-                this._createGameScene();
+                this._defineScenes();
+                this._loadAssets();
                 
                 return this;
             },
@@ -57,7 +77,7 @@ $(function() {
              * initialised game.
              */
             instance: function (canvasID) {
-                return Object.create(Tron).init(canvasID);
+                return (Object.create(Tron)).init(canvasID);
             },
             
             /**
@@ -71,11 +91,27 @@ $(function() {
              * @return this
              */
             start: function () {
-                this._debugPrint("Starting game");
+                this._debugPrint('Starting Tron (Scene: ' + this._startingScene + ')');
                 
-                Crafty.enterScene(this._gameScene, this);
+                Crafty.enterScene(Tron.config.startingScene, this);
                 
                 return this;
+            },
+            
+            /**
+             * Wrapper function to start a game of Tron safely ensuring all assets have been loaded.
+             * 
+             * @param Tron game
+             * @returns void
+             */
+            startWhenLoaded: function (game) {
+                if (!Tron._assetsLoaded) {
+                    Crafty.log('Still waiting for assets to load...');
+                    setTimeout(Tron.startWhenLoaded, 1000, game);
+                    return;
+                }
+                
+                game.start();
             },
             
             /**
@@ -162,32 +198,46 @@ $(function() {
             },
             
             /**
+             * Loads all necessary images, sprites and audio files.
+             */
+            _loadAssets: function () {                
+                Crafty.load({
+                    sprites: {
+                        "images/bike.png": {
+                            tile: 32,
+                            tileh: 32,
+                            map: {
+                                Sprite_Bike: [0, 0]
+                            }
+                        },
+                        "images/explosion.png": {
+                            tile: 64,
+                            tileh: 64,
+                            map: {
+                                Sprite_Explosion: [0, 0]
+                            }
+                        }
+                    }
+                }, function () {
+                    Tron._assetsLoaded = true;
+                    Crafty.log('Assets loaded');
+                });
+            },
+            
+            /**
              * Tron._defineObjects
              * Defines the game objects used in Tron.
              */
             _defineObjects: function () {
-                Crafty.c('Point', {
-                    required: '2D',
-                    
-                    init: function () {
-                        this.h = 0;
-                        this.w = 0;
-                    },
-                    
-                    enableDebug: function () {
-                        this.addComponent('Canvas, Color').color('yellow').attr({
-                            h: 1,
-                            w: 1
-                        });
-                    },
-                    
-                    disableDebug: function() {
-                        this.removeComponent('Canvas, Color');
-                    }
-                });
-                
+                /**
+                 * A controllable object that isn't rendered on the screen at all.
+                 */
                 Crafty.c('Controllable', {
-                    required: "Motion, AngularMotion, Keyboard",
+                    /**
+                     * Object requires motion and keyboard component. Angular motion is handled
+                     * manually and so AngularMotion is nto required.
+                     */
+                    required: "Motion, Keyboard",
                     
                     /**
                      * Defines the magnitude used to multiply the movement vector to denote the 
@@ -229,7 +279,6 @@ $(function() {
                      * Initialiser function to set the objects default properties.
                      */
                     init: function () {
-                        // Set the origin 
                         this.origin('center');
                     },
                     
@@ -267,16 +316,18 @@ $(function() {
                             }
                         },                        
                         
-                        EnterFrame: function () {                   
+                        EnterFrame: function () {         
+                            // Handle rotation of the object. Prevent rotation if both arrows
+                            // are pushed down.
                             if (!(this._keysPressed.LEFT && this._keysPressed.RIGHT) 
                                     && (this._keysPressed.LEFT || this._keysPressed.RIGHT)) {
                                 
                                 if (this._keysPressed.LEFT) {
-                                    this._rotation-= this._rotationSpeed;
+                                    this.rotation-= this._rotationSpeed;
                                 }
                                 
                                 if (this._keysPressed.RIGHT) {
-                                    this._rotation+= this._rotationSpeed;
+                                    this.rotation+= this._rotationSpeed;
                                 }
                             }
                             
@@ -285,20 +336,27 @@ $(function() {
                             this._vector.y = -Math.cos(Crafty.math.degToRad(this._rotation));
 
                             // Does the user want is to move forward?
-                            if(this._keysPressed.UP) {
+                            if (this._keysPressed.UP) {
+                                // Adjust the magnitude ensuring we don't go over the limit.
                                 if (this._magnitude <= this._maxMagnitude) {
                                     this._magnitude+= this._magnitudeIncrement;
                                 }
                                 
+                                // Scale the vector to the new magnitude.
                                 this._vector.scaleToMagnitude(this._magnitude);
                                 
+                                // Adjust the x and y velocity of the objet accordingly.
                                 this.vx = this._vector.x;
                                 this.vy = this._vector.y;
                             } else {
+                                // Decrease the magnitude while it's greater than 1
                                 if (this._magnitude > 1) {
                                     this._magnitude-= this._magnitudeIncrement;
                                 }
                                 
+                                // If magnitude is less than or equal to 1 we're at the smallest 
+                                // magnitude and want to stop the object moving. If not, we want
+                                // to apply the reduced magnitude and set the velocity accordingly.
                                 if (this._magnitude <= 1) {
                                     this._magnitude = 1;
                                     this.vx = 0;
@@ -324,21 +382,113 @@ $(function() {
                     },
                 });
                 
+                /**
+                 * Define a generic square object.
+                 */
                 Crafty.c('Square', {
-                    required: '2D, Canvas, Color',
-                    
-                    init: function () {
-                        this.w = 20;
-                        this.h = 40;
-                    },
+                    required: '2D, Canvas, Color'
                 });
                 
+                /**
+                 * Define a player object.
+                 */
                 Crafty.c('Player', {
-                    required: 'Square'
+                    /**
+                     * Define required components.
+                     */
+                    required: 'Sprite_Bike, Canvas, Collision',
+                    
+                    /**
+                     * Initialises the objects properties.
+                     */
+                    init: function () {
+                        this.checkHits('Player');
+                    },
+                    
+                    /**
+                     * Defines events to hook in to.
+                     */
+                    events: {
+                        EnterFrame: function () {
+                            // Ensure the player doesn't go flying off the screen never to be
+                            // seen again
+                            if(this._x > Crafty.viewport.width) {
+                                this.x = -this._h;
+                            }
+                            
+                            if(this._x < -this._h) {
+                                this.x =  Crafty.viewport.width;
+                            }
+                            
+                            if(this._y > Crafty.viewport.height) {
+                                this.y = -this._h;
+                            }
+                            
+                            if(this._y < -this._h) {
+                                this.y = Crafty.viewport.height;
+                            }
+                        },
+                        
+                        HitOn: function (collision) {
+                            var o = collision[0].obj;
+                            if (o.has('Player')) {
+                                o.explode();
+                                this.explode();
+                            }
+                        }
+                    },
+                    
+                    /**
+                     * Explodes this object replacing itself with an explosion object.
+                     * 
+                     * @returns void
+                     */
+                    explode: function () {
+                        Crafty.e('Explosion').attr({
+                            x: this.x,
+                            y: this.y
+                        });
+                        this.destroy();
+                    }
                 });
                 
+                /**
+                 * Defines a controllable player.
+                 */
                 Crafty.c('ControllablePlayer', {
-                    required: 'Player, Controllable'
+                    /**
+                     * Define the required components.
+                     */
+                    required: 'Player, Controllable',
+                    
+                    /**
+                     * Initialisation stuff.
+                     */
+                    init: function () {
+                        this.checkHits('Player');
+                    }
+                });
+                
+                /**
+                 * Defines an explosion object.
+                 */
+                Crafty.c('Explosion', {
+                    /**
+                     * Define required components.
+                     */
+                    required: 'Sprite_Explosion, Canvas',
+                    
+                    /**
+                     * Initialise the attributes.
+                     */
+                    init: function () {
+                        this.origin('center');
+                        this.rotation = Crafty.math.randomNumber(0, 359);
+                        
+                        setTimeout(function (explosion) {
+                            explosion.destroy();
+                        }, Tron.config.explosionTimeout, this);
+                    }
                 });
             },
             
@@ -346,19 +496,41 @@ $(function() {
              * Tron._createGameScene
              * Creates the required objects for a game instance.
              */
-            _createGameScene: function () {
-                this._debugPrint("Creating the game scene");
+            _defineScenes: function () {
+                this._debugPrint("Defining game scenes");
                 
-                Crafty.defineScene(this._gameScene, function (game) {
-                    Crafty.background('#000');
-                    
+                // Define our game scene. This is the main game scene 
+                Crafty.defineScene(this._scenes.game, function (game) {                    
                     var player = Crafty.e('ControllablePlayer')
                             .attr({
                                 x: 100,
-                                y: 100
-                            })
-                            .color('red');
+                                y: 100,
+                                rotation: 90
+                            });
+                    
                     game.setPlayer(player); 
+                });
+                
+                // Define a debug scene specifically for debugging prposes.
+                Crafty.defineScene(this._scenes.debug, function (game) {        
+                    Crafty.log("Loading scene debug");
+                    var player = Crafty.e('ControllablePlayer, WiredHitBox')
+                            .attr({
+                                x: 100,
+                                y: 100,
+                                rotation: 90
+                            });
+                    
+                    game.setPlayer(player); 
+                    
+                    for (var i = 0; i < 5; i++) {
+                        Crafty.e('Player, WiredHitBox')
+                                .attr({
+                                    x: Crafty.math.randomNumber(150, Crafty.viewport.width),
+                                    y: Crafty.math.randomNumber(0, Crafty.viewport.height),
+                                    rotation: Crafty.math.randomNumber(0, 359)
+                                });
+                    }
                 });
             },
             
