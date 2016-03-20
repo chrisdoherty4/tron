@@ -514,7 +514,7 @@ $(function() {
                 // Define a debug scene specifically for debugging prposes.
                 Crafty.defineScene(this._scenes.debug, function (game) {        
                     Crafty.log("Loading scene debug");
-                    var player = Crafty.e('ControllablePlayer, WiredHitBox')
+                    var player = Crafty.e('ControllablePlayer')
                             .attr({
                                 x: 100,
                                 y: 100,
@@ -524,7 +524,7 @@ $(function() {
                     game.setPlayer(player); 
                     
                     for (var i = 0; i < 5; i++) {
-                        Crafty.e('Player, WiredHitBox')
+                        Crafty.e('Player')
                                 .attr({
                                     x: Crafty.math.randomNumber(150, Crafty.viewport.width),
                                     y: Crafty.math.randomNumber(0, Crafty.viewport.height),
