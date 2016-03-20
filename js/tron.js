@@ -75,8 +75,6 @@ $(function() {
                 
                 Crafty.enterScene(this._gameScene, this);
                 
-                console.log(Crafty("*"));
-                
                 return this;
             },
             
@@ -192,40 +190,31 @@ $(function() {
                     required: "Motion, AngularMotion, Keyboard",
                     
                     /**
-                     * Defines the maximum velocity the object can move.
+                     * Defines the magnitude used to multiply the movement vector to denote the 
+                     * maximum velocity the object can travel in in the x and y planes.
                      */
-                    _maxVelocity: 10,
+                    _maxMagnitude: 300,
                     
                     /**
-                     * The square root of the max velocity. Precalculated on initialisation and 
-                     * used to compare speeds and remove the problem of negative values.
+                     * Defines the magnitude to apply to the objects acceleration properties when
+                     * manipulating the objects movement vector.
                      */
-                    _maxVelocitySq: 0,
+                    _magnitudeIncrement: 5,
                     
                     /**
-                     * Rate of acceleration
+                     * Defines the current magnitude of our movement vector.
                      */
-                    _accelerationRate: 0.2,
+                    _magnitude: 1,
                     
                     /**
-                     * Rate of deceleration
+                     * Defines the movement vector for this object
                      */
-                    _decelerationRate: 0.95,
-                    
-                    /**
-                     * Speed at which y changes
-                     */
-                    _ySpeed: 0,
-                    
-                    /**
-                     * Speed at which x changes
-                     */
-                    _xSpeed: 0,
+                    _vector: new Crafty.math.Vector2D(),
                     
                     /**
                      * Defines the rotational speed of the object.
                      */
-                    _rotationSpeed: 10,
+                    _rotationSpeed: 7,
                     
                     /**
                      * Defines whether the up key has been pressed or not.
@@ -237,12 +226,11 @@ $(function() {
                     },
                     
                     /**
-                     * Sets the origin to the centre of the object so we rotate correctly.
+                     * Initialiser function to set the objects default properties.
                      */
                     init: function () {
+                        // Set the origin 
                         this.origin('center');
-                        this._rotation+= 90;
-                        this._maxVelocitySq = Math.pow(this._maxVelocity, 2);
                     },
                     
                     /**
@@ -292,35 +280,35 @@ $(function() {
                                 }
                             }
                             
-                            // Acceleration and movement vector
-                            var vx = Math.sin(this._rotation * Math.PI / 180) 
-                                    * this._accelerationRate;
-                            var vy = Math.cos(this._rotation * Math.PI / 180)
-                                    * this._accelerationRate;
+                            // Calculate the vectors for the direction of the object.
+                            this._vector.x = Math.sin(Crafty.math.degToRad(this._rotation));
+                            this._vector.y = -Math.cos(Crafty.math.degToRad(this._rotation));
 
-                            //if the move up is true, increment the y/xspeeds
+                            // Does the user want is to move forward?
                             if(this._keysPressed.UP) {
-                                this._ySpeed -= vy;
-                                this._xSpeed += vx;
+                                if (this._magnitude <= this._maxMagnitude) {
+                                    this._magnitude+= this._magnitudeIncrement;
+                                }
+                                
+                                this._vector.scaleToMagnitude(this._magnitude);
+                                
+                                this.vx = this._vector.x;
+                                this.vy = this._vector.y;
                             } else {
-                                // Slow down
-                                this._xSpeed *= this._decelerationRate;
-                                this._ySpeed *= this._decelerationRate;
+                                if (this._magnitude > 1) {
+                                    this._magnitude-= this._magnitudeIncrement;
+                                }
+                                
+                                if (this._magnitude <= 1) {
+                                    this._magnitude = 1;
+                                    this.vx = 0;
+                                    this.vy = 0;
+                                } else {
+                                    this._vector.scaleToMagnitude(this._magnitude);
+                                    this.vx = this._vector.x;
+                                    this.vy = this._vector.y;
+                                }
                             }
-                            
-                            if (Math.pow(this._xSpeed, 2) > this._maxVelocitySq) {
-                                this._xSpeed = (this._xSpeed < 0 ? 
-                                    this._maxVelocity * -1 : this._maxVelocity);
-                            }
-                            
-                            if (Math.pow(this._ySpeed, 2) > this._maxVelocitySq) {
-                                this._ySpeed = (this._ySpeed < 0 ? 
-                                    this._maxVelocity * -1 : this._maxVelocity);
-                            }
-
-                            // Move the object by calculated amount.
-                            this.x += this._xSpeed;
-                            this.y += this._ySpeed;
                         }
                     },
                     
