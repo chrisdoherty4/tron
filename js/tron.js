@@ -98,6 +98,8 @@ $(function() {
             start: function () {
                 this._debugPrint('Starting Tron (Scene: ' + Tron.config.startingScene + ')');
                 
+                Crafty.audio.play('intro', -1, 0.1);
+                
                 Crafty.enterScene(Tron.config.startingScene, this);
                 
                 return this;
@@ -222,6 +224,10 @@ $(function() {
                                 Sprite_Explosion: [0, 0]
                             }
                         }
+                    },
+                    audio: {
+                        intro: ["audio/run_wild.mp3"],
+                        explosion: ["audio/explosion.mp3"]
                     }
                 }, function () {
                     Tron._assetsLoaded = true;
@@ -387,6 +393,7 @@ $(function() {
                      */
                     init: function () {
                         this.checkHits('Player', 'Trail');
+                        this.z = 10;
                     },
                     
                     /**
@@ -419,6 +426,8 @@ $(function() {
                             // Calculate the vectors for the direction of the object.
                             this._vector.x = Math.sin(Crafty.math.degToRad(this._rotation));
                             this._vector.y = -Math.cos(Crafty.math.degToRad(this._rotation));
+                            
+                            
                         },
                         
                         HitOn: function (collision) {
@@ -460,9 +469,11 @@ $(function() {
                             y: this.y
                         });
                         
+                        Crafty.audio.play('explosion', 1, 0.2);
+                        
                         setTimeout(function (player) {
                             player.destroy();
-                        }, 200, this);
+                        }, 100, this);
                     },
                     
                     /**
@@ -634,6 +645,7 @@ $(function() {
                      */
                     init: function () {
                         this.origin('center');
+                        this.z = 20;
                         this.rotation = Crafty.math.randomNumber(0, 359);
                         
                         setTimeout(function (explosion) {
@@ -683,9 +695,9 @@ $(function() {
                                 });
                     }
                     
-//                    Crafty('*').each(function () {
-//                        this.addComponent('WiredHitBox');
-//                    });
+                    Crafty('*').each(function () {
+                        this.addComponent('WiredHitBox');
+                    });
                 });
             },
             
