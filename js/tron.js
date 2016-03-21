@@ -98,7 +98,7 @@ $(function() {
             start: function () {
                 this._debugPrint('Starting Tron (Scene: ' + Tron.config.startingScene + ')');
                 
-                Crafty.audio.play('intro', -1, 0.1);
+                Crafty.audio.play('intro', -1, 0.05);
                 
                 Crafty.enterScene(Tron.config.startingScene, this);
                 
@@ -210,11 +210,18 @@ $(function() {
             _loadAssets: function () {                
                 Crafty.load({
                     sprites: {
-                        "images/bike.png": {
+                        "images/bike_cyan.png": {
                             tile: 32,
                             tileh: 32,
                             map: {
-                                Sprite_Bike: [0, 0]
+                                Sprite_BikeCyan: [0, 0]
+                            }
+                        },
+                        "images/bike_orange.png": {
+                            tile: 32,
+                            tileh: 32,
+                            map: {
+                                Sprite_BikeOrange: [0, 0]
                             }
                         },
                         "images/explosion.png": {
@@ -222,6 +229,13 @@ $(function() {
                             tileh: 64,
                             map: {
                                 Sprite_Explosion: [0, 0]
+                            }
+                        },
+                        "images/trail.png": {
+                            tile: 32,
+                            tileh: 32,
+                            map: {
+                                Sprite_Trail: [0, 0]
                             }
                         }
                     },
@@ -283,10 +297,9 @@ $(function() {
                      * Initialise object.
                      */
                     init: function () {
-                        this.h = 2;
-                        this.w = 2;
+                        this.h = 6;
+                        this.w = 1;
                         this.origin('center');
-                        this.color('red');
                         this.checkHits('Player');
                         
                         // Schedule a destroy time.
@@ -353,7 +366,7 @@ $(function() {
                     /**
                      * Define required components.
                      */
-                    required: 'Sprite_Bike, 2D, Canvas, Collision',
+                    required: '2D, Canvas, Collision',
                     
                     /**
                      * Defines the absolute centre point of this object.
@@ -384,6 +397,11 @@ $(function() {
                     _trail: [],
                     
                     /**
+                     * Defines the colour of this players trail.
+                     */
+                    _trailColour: '',
+                    
+                    /**
                      * Defines whether this object can be manipulated or not.
                      */
                     _mute: false,
@@ -394,6 +412,13 @@ $(function() {
                     init: function () {
                         this.checkHits('Player', 'Trail');
                         this.z = 10;
+                        
+                        this.collision([
+                            11, 0,
+                            11, 32,
+                            23, 32,
+                            23, 0,
+                        ]);
                     },
                     
                     /**
@@ -446,9 +471,10 @@ $(function() {
                             // The centrepoint is tracked on a frame by frame basis.
                             if (this._magnitude >= this._trailRequiredMagnitude) {
                                 var t = Crafty.e('Trail').attr({
-                                    x: (this._absoluteCentre.x - 1),
-                                    y: (this._absoluteCentre.y - 1)
-                                });
+                                    x: (this._absoluteCentre.x),
+                                    y: (this._absoluteCentre.y),
+                                    rotation: this.rotation
+                                }).color(this._trailColour);
                                 this._trail.push(t);
                                 t.setPlayer(this);
                             }
@@ -469,7 +495,7 @@ $(function() {
                             y: this.y
                         });
                         
-                        Crafty.audio.play('explosion', 1, 0.2);
+                        Crafty.audio.play('explosion', 1, 0.05);
                         
                         setTimeout(function (player) {
                             player.destroy();
@@ -488,6 +514,40 @@ $(function() {
                 });
                 
                 /**
+                 * Defines an enemy player.
+                 */
+                Crafty.c('EnemyPlayer', {
+                    /**
+                     * Define requierd components.
+                     */
+                    required: 'Player, Sprite_BikeOrange',
+                    
+                    /**
+                     * Initialise the objects parameters.
+                     */
+                    init: function () {
+                        this._trailColour = 'rgb(255, 120, 0)';
+                    }
+                });
+                
+                /**
+                 * Defines a friendly player.
+                 */
+                Crafty.c('FriendlyPlayer', {
+                    /**
+                     * Define requierd components.
+                     */
+                    required: 'Player, Sprite_BikeCyan',
+                    
+                    /**
+                     * Initialise the objects parameters.
+                     */
+                    init: function () {
+                        this._trailColour = 'cyan';
+                    }
+                });
+                
+                /**
                  * Defines a controllable player.
                  */
                 Crafty.c('ControllablePlayer', {
@@ -495,7 +555,7 @@ $(function() {
                      * Object requires motion and keyboard component. Angular motion is handled
                      * manually and so AngularMotion is nto required.
                      */
-                    required: "Player, Motion, Keyboard",
+                    required: "FriendlyPlayer, Motion, Keyboard",
                     
                     /**
                      * Defines the magnitude used to multiply the movement vector to denote the 
@@ -677,6 +737,55 @@ $(function() {
                 // Define a debug scene specifically for debugging prposes.
                 Crafty.defineScene(this._scenes.debug, function (game) {        
                     Crafty.log("Loading scene debug");
+
+                    Crafty.background('rgb(40, 40, 40) url("images/bg.png") center no-repeat');
+                    
+                    var options = {
+                        maxParticles: 150,
+                        
+                        size: 30,
+                        sizeRandom: 20,
+                        
+                        speed: 0.2,
+                        speedRandom: 0.8,
+                        
+                        // Lifespan in frames
+                        lifeSpan: 50,
+                        lifeSpanRandom: 10,
+                        
+                        // Angle is calculated clockwise: 12pm is 0deg, 3pm is 90deg etc.
+                        angle: 180,
+                        angleRandom: 50,
+                        
+                        startColour: [40, 40, 40, 1],
+                        startColourRandom: [0, 0, 0, 5],
+                        
+                        endColour: [60, 60, 60, 0],
+                        endColourRandom: [0, 0, 0, 0],
+                        
+                        // Only applies when fastMode is off, specifies how sharp the gradients are drawn
+                        sharpness: 80,
+                        sharpnessRandom: 10,
+                        
+                        // Random spread from origin
+                        spread: Crafty.viewport.width,
+                        
+                        // How many frames should this last
+                        duration: -1,
+                        
+                        // Will draw squares instead of circle gradients
+                        fastMode: true,
+                        
+                        gravity: {x: 0, y: 0},
+                        
+                        // sensible values are 0-3
+                        jitter: 0,
+                        
+                        // Offset for the origin of the particles
+                        originOffset: {x: Crafty.viewport.width / 2, y: Crafty.viewport.height / 2}
+                    };
+                    Crafty.e("2D,Canvas,Particles").particles(options);
+                    
                     var player = Crafty.e('ControllablePlayer')
                             .attr({
                                 x: 100,
@@ -687,7 +796,7 @@ $(function() {
                     game.setPlayer(player); 
                     
                     for (var i = 0; i < 5; i++) {
-                        Crafty.e('Player')
+                        Crafty.e('EnemyPlayer')
                                 .attr({
                                     x: Crafty.math.randomNumber(150, Crafty.viewport.width),
                                     y: Crafty.math.randomNumber(0, Crafty.viewport.height),
@@ -695,9 +804,9 @@ $(function() {
                                 });
                     }
                     
-                    Crafty('*').each(function () {
-                        this.addComponent('WiredHitBox');
-                    });
+//                    Crafty('*').each(function () {
+//                        this.addComponent('WiredHitBox');
+//                    });
                 });
             },
             
