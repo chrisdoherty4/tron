@@ -14,7 +14,7 @@ $(function() {
                 /**
                  * Defines the timeout for explosions. Once timed out, explosion will destroy,
                  */
-                explosionTimeout: 3000,
+                explosionTimeout: 1500,
                 
                 /**
                  * Defines the time a trail stays alive for.
@@ -88,7 +88,12 @@ $(function() {
                         tile: 64,
                         tileh: 64,
                         map: {
-                            Sprite_Explosion: [0, 0]
+                            Sprite_Explosion_0: [0, 0],
+                            Sprite_Explosion_1: [1, 0],
+                            Sprite_Explosion_2: [2, 0],
+                            Sprite_Explosion_3: [3, 0],
+                            Sprite_Explosion_4: [4, 0],
+                            Sprite_Explosion_5: [5, 0],
                         }
                     },
                     "images/trail.png": {
@@ -97,11 +102,19 @@ $(function() {
                         map: {
                             Sprite_Trail: [0, 0]
                         }
+                    },
+                    "images/speaker.png": {
+                        tile: 512,
+                        tileh: 512,
+                        map: {
+                            Sprite_SpeakerActive: [0, 0],
+                            Sprite_SpeakerMuted: [1, 0]
+                        }
                     }
                 },
                 audio: {
-                    intro: ["audio/run_wild_edited.mp3"],
-                    explosion: ["audio/explosion.mp3"]
+                    Background: ["audio/run_wild_edited.mp3"],
+                    Explosion: ["audio/explosion.mp3"]
                 }
             }, 
             
@@ -115,7 +128,7 @@ $(function() {
             init: function(canvasID) {
                 Crafty.logginEnabled = Tron._config.logging;
                 
-                this._debugPrint("Initialising Tron");
+                Crafty.log("Initialising Tron");
                 
                 this._setupCanvas(canvasID);
                 this._defineObjects();
@@ -148,9 +161,9 @@ $(function() {
              * @return this
              */
             start: function () {
-                this._debugPrint('Starting Tron (Scene: ' + Tron._config.startingScene + ')');
+                Crafty.log('Starting Tron');
                 
-                this.enterScene(Tron._config.startingScene);
+                this.enterScene('Main', this);
                 
                 return this;
             },
@@ -179,7 +192,7 @@ $(function() {
              * @return this
              */
             stop: function () {
-                this._debugPrint("Stopping game");
+                Crafty.log("Stopping game");
                 
                 return this;
             },
@@ -191,7 +204,7 @@ $(function() {
              * @returns this
              */
             pause: function () {
-                this._debugPrint("Pausing game");
+                Crafty.log("Pausing game");
                 
                 if (!this._paused) {
                     Crafty.pause();
@@ -208,7 +221,7 @@ $(function() {
              * @returns this
              */
             unpause: function () {
-                this._debugPrint("Unpausing game");
+                Crafty.log("Unpausing game");
                 
                 if (this._paused) {
                     Crafty.pause();
@@ -244,13 +257,13 @@ $(function() {
              * Enters the defined scene.
              * 
              * @param string key
-             * @returns {undefined}
+             * @returns void
              */
-            enterScene: function (key) {
-                if (this._scenes.indexOf(key) === -1) {
+            enterScene: function (key, data) {
+                if (Tron._scenes.indexOf(key) === -1) {
                     Crafty.error('Scene undefined: ' + key);
                 } else {
-                    Crafty.enterScene(key);
+                    Crafty.enterScene(key, data);
                 }
             },
             
@@ -261,7 +274,10 @@ $(function() {
              * @returns void
              */
             setConfig: function (config) {
-                Tron._config = config;
+                config = config || {};
+                for(var i in config) {
+                    Tron._config[i] = config[i];
+                }
             },
             
             /**
@@ -345,6 +361,7 @@ $(function() {
                         this.w = 1;
                         this.origin('center');
                         this.checkHits('Player');
+                        this.z = 5;
                         
                         // Activate the trail after some time  to avoid blowing ourselves up.
                         setTimeout(function (trail) {
@@ -464,7 +481,7 @@ $(function() {
                     /**
                      * Defines the colour of this players trail.
                      */
-                    _trailColour: '',
+                    _trailColour: 'red',
                     
                     /**
                      * Defines whether this object can be manipulated or not.
@@ -510,39 +527,38 @@ $(function() {
                                 this.y = Crafty.viewport.height;
                             }
                             
-                            // Update the absolute origin
-                            this._absoluteCentre.x = this.x + this._origin.x;
-                            this._absoluteCentre.y = this.y + this._origin.y;
-                            
                             // Calculate the vectors for the direction of the object.
                             this._vector.x = Math.sin(Crafty.math.degToRad(this._rotation));
                             this._vector.y = -Math.cos(Crafty.math.degToRad(this._rotation));
+                            this._absoluteCentre.x = this.x + this._origin.x;
+                            this._absoluteCentre.y = this.y + this._origin.y;
                         },
                         
                         HitOn: function (collision) {
-                            var o = collision[0].obj;
-                            if (o.has('Player')) {
+                            if (collision[0].obj.has('Player')) {
                                 this.explode();
                             }
                         },
                         
-                        Moved: function (oldPosition) {
-                            // If we're over a configurable magnitude we want to begin creating 
-                            // a trail. Place the trail objects right behind the bike by negating
-                            // the bikes vector and giving it a magnitude of 20, then adding 
-                            // the vector to the coordinates of the objects centre point.
-                            //
-                            // The centrepoint is tracked on a frame by frame basis.
-                            if (this._magnitude >= this._trailRequiredMagnitude) {
-                                var t = Crafty.e('Trail').attr({
-                                    x: (this._absoluteCentre.x),
-                                    y: (this._absoluteCentre.y - 2),
-                                    rotation: this.rotation
-                                })
-                                .color(this._trailColour)
-                                .setPlayer(this);
-                                
-                                this._trail.push(t);
+                        Move: function (oldPosition) {
+                            if (!this.isLocked()) {
+                                // If we're over a configurable magnitude we want to begin creating 
+                                // a trail. Place the trail objects right behind the bike by negating
+                                // the bikes vector and giving it a magnitude of 20, then adding 
+                                // the vector to the coordinates of the objects centre point.
+                                //
+                                // The centrepoint is tracked on a frame by frame basis.
+                                if (this._magnitude >= this._trailRequiredMagnitude) {
+                                    var t = Crafty.e('Trail').attr({
+                                        x: (this._absoluteCentre.x),
+                                        y: (this._absoluteCentre.y - 2),
+                                        rotation: this.rotation
+                                    })
+                                    .color(this._trailColour)
+                                    .setPlayer(this);
+
+                                    this._trail.push(t);
+                                }
                             }
                         }
                     },
@@ -576,19 +592,28 @@ $(function() {
                      * @returns void
                      */
                     explode: function () {
-                        // Let everything know we've been muted.
-                        this.lock();
-                        
-                        Crafty.e('Explosion').attr({
-                            x: this._absoluteCentre.x,
-                            y: this._absoluteCentre.y
-                        });
-                        
-                        Crafty.audio.play('explosion', 1, 0.05);
-                        
-                        setTimeout(function (player) {
-                            player.destroy();
-                        }, 100, this);
+                        if (!this.isLocked()) {
+                            // Let everything know we've been muted.
+                            this.lock();
+                            
+                            // Rotate back into the 0d position.
+                            this.rotate = 0;
+                            
+                            // Create a new explision object and offset it by 16 pixels moving it
+                            // up and left so it centres ove the top of the bike.
+                            //
+                            // We offset by 15 because the player is 32x23 and the explosion is 
+                            // 64x64 so to centre one over the other we must move by 16.
+                            var e = Crafty.e('Explosion');
+                            e.attr({
+                                x: this.x - 16,
+                                y: this.y - 16
+                            });
+
+                            setTimeout(function (player) {
+                                player.destroy();
+                            }, 100, this);
+                        }
                     },
                     
                     /**
@@ -799,7 +824,7 @@ $(function() {
                     /**
                      * Define required components.
                      */
-                    required: 'Sprite_Explosion, Canvas',
+                    required: 'Sprite_Explosion_0, Canvas, SpriteAnimation, Tween',
                     
                     /**
                      * Initialise the attributes.
@@ -809,30 +834,125 @@ $(function() {
                         this.z = 20;
                         this.rotation = Crafty.math.randomNumber(0, 359);
                         
+                        Crafty.audio.play('Explosion', 1, 0.05);
+                        
+                        // Create an explosion reel and begin the animation.
+                        this.reel('ExplosionAnimation', 250, 0, 0, 6)
+                                .animate('ExplosionAnimation');
+                        
+                        // Set timeout and tween down the alpha setting for the explosion when,
+                        // we're close to removing the explosion.
+                        setTimeout(function (explosion) {
+                            explosion.tween({
+                                alpha: 0
+                            }, 500);
+                        }, Tron._config.explosionTimeout - 500, this);
+                        
+                        // Remove the explosion after configured time.
                         setTimeout(function (explosion) {
                             explosion.destroy();
                         }, Tron._config.explosionTimeout, this);
                     }
                 });
-            },
-            
-            /**
-             * Tron._debugPrint
-             * If debug enabled, will print a debug message to the console.
-             * 
-             * @param string m
-             * @returns this
-             */
-            _debugPrint: function (m) {
-                Crafty.log(m);
-                return this;
+                
+                /**
+                 * Speaker control component that allows for muting and unmuting when clicked.
+                 */
+                Crafty.c('SpeakerControl', {
+                    /**
+                     * Define required components
+                     */
+                    required: '2D, Canvas, Sprite_SpeakerActive, Mouse',
+                    
+                    /**
+                     * An ID of the audio track to pause.
+                     */
+                    _audioID: null,
+                    
+                    /**
+                     * Tracks whether we are in a paused or unpaused state.
+                     */
+                    _pause: false,
+                    
+                    /**
+                     * Initialise the speaker giving dimensions.
+                     */
+                    init: function () {
+                        this.h = 32;
+                        this.w = 32;
+                        this.alpha = 0.15;
+                    },
+                    
+                    events: {
+                        NewComponent: function () {
+                            this.h = 32;
+                            this.w = 32;
+                        },
+                
+                        Click: function (e) {
+                            if (this._audioID) { 
+                                if (!this._paused) {
+                                    this._paused = true;
+                                    Crafty.audio.pause(this._audioID);
+                                    this.removeComponent('Sprite_SpeakerActive')
+                                            .addComponent('Sprite_SpeakerMuted');
+                                } else {
+                                    this._paused = false;
+                                    Crafty.audio.unpause(this._audioID);
+                                    this.removeComponent('Sprite_SpeakerMuted')
+                                            .addComponent('Sprite_SpeakerActive');
+                                }
+                            } else {
+                                Crafty.log("No audio ID set");
+                            }
+                        }
+                    },
+                    
+                    /**
+                     * Sets the ID of the audio track this object will mute/pause when clicked.
+                     * 
+                     * @param string id
+                     * @returns this
+                     */
+                    setAudioID: function (id) {
+                        this._audioID = id;
+                        
+                        return this;
+                    }
+                });
             }
         };
         
-        Tron.addScene('LandingPage', function () {
+        Tron.addScene('LandingPage', function (game) {
             Crafty.background('rgb(40, 40, 40) url("images/logo_nobg.png") center no-repeat');
             
-            Crafty.audio.play('intro', -1, 0.1);
+            Crafty.audio.play('Background', -1, 0.1);
+            
+            Crafty.e('SpeakerControl').attr({
+                x: Crafty.viewport.width - 64,
+                y: 32
+            }).setAudioID('Background');
+            
+            Crafty.e('2D, Text, DOM, Mouse').attr({
+                h: 100,
+                w: 400,
+                x: Crafty.viewport.width / 2 - 180,
+                y: Crafty.viewport.height / 2 + 100,
+            })
+            .text('Lets play!')
+            .textColor('rgba(255, 255, 255, 0.1)')
+            .textFont({
+                font: 'Impact, Charcoal, sans-serif', 
+                size: '30pt',
+                weight: 'bold'
+            })
+            .css({
+                'text-align': 'center',
+            })
+            .bind('Click', function () {
+                Crafty.audio.stop();
+                game.start();
+            });
                 
             Crafty.e("2D, Canvas, Particles").particles({
                 // Maximum number of particles in frame at any one time.
@@ -888,7 +1008,11 @@ $(function() {
                 originOffset: {
                     x: Crafty.viewport.width / 2, 
                     y: Crafty.viewport.height / 2
-                }
+                },
+                
+                // Custom option. 
+                // Renders particles behind everything else.
+                backgroundLayer: true,
             });
 
             Crafty.e('CyanPlayer').attr({
@@ -907,7 +1031,7 @@ $(function() {
         Tron.addScene('Main', function () {
             Crafty.background('rgb(40, 40, 40) url("images/bg.png") center no-repeat');
                     
-            Crafty.audio.play('intro', -1, 0.05);
+            //Crafty.audio.play('Background', -1, 0.05);
             
             Crafty.e("2D, Canvas, Particles").particles({
                 // Maximum number of particles in frame at any one time.
@@ -963,7 +1087,11 @@ $(function() {
                 originOffset: {
                     x: Crafty.viewport.width / 2, 
                     y: Crafty.viewport.height / 2
-                }
+                },
+                
+                // Custom option. 
+                // Renders particles behind everything else.
+                backgroundLayer: true,
             });
                     
             Crafty.e('CyanPlayer, ControllablePlayer').attr({
@@ -974,7 +1102,7 @@ $(function() {
         });
         
         Tron.addScene('Debug', function () {
-            Crafty.background('rgb(40, 40, 40) url("images/logo_nobg.png") center no-repeat');
+            Crafty.background('rgb(40, 40, 40) url("images/bg.png") center no-repeat');
                 
             Crafty.e("2D, Canvas, Particles").particles({
                 // Maximum number of particles in frame at any one time.
@@ -1030,7 +1158,11 @@ $(function() {
                 originOffset: {
                     x: Crafty.viewport.width / 2, 
                     y: Crafty.viewport.height / 2
-                }
+                },
+                
+                // Custom option. 
+                // Renders particles behind everything else.
+                backgroundLayer: true,
             });
 
             // A controllable player for the user.
@@ -1051,7 +1183,7 @@ $(function() {
         });
         
         // TODO: Remove this line, shouldn't be the starting scene.
-        //Tron._config.startingScene = 'Debug';
+        Tron._config.startingScene = 'LandingPage';
 
         window.Tron = Tron;
     })(window);

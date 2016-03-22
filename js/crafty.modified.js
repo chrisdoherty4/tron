@@ -8002,7 +8002,12 @@ Crafty.c("Particles", {
         c.style.left = "0px";
         c.style.top = "0px";
 
-        Crafty.stage.elem.appendChild(c);
+        //Crafty.stage.elem.appendChild(c);
+        if (options.backgroundLayer === true) {
+            Crafty.stage.elem.insertBefore(c, Crafty.stage.elem.firstChild);
+        } else {
+            Crafty.stage.elem.appendChild(c);
+        }
 
         ctx = c.getContext('2d');
 
