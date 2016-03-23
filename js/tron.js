@@ -199,8 +199,11 @@ $(function() {
              * @param bool If true, clears the game state resetting everything.
              * @return this
              */
-            stop: function () {
+            unload: function (clearCanvas) {
                 Crafty.log("Stopping game");
+                
+                clearCanvas = clearCanvas || true;
+                Crafty.stop(clearCanvas);
                 
                 return this;
             },
@@ -298,7 +301,11 @@ $(function() {
              */
             _setupCanvas: function (canvasID) {
                 this._canvas = document.getElementById(canvasID);
-                Crafty.init(this._canvas.style.width, this._canvas.style.height);
+                if (!this._canvas) {
+                    Crafty.init(this._canvas.style.width, this._canvas.style.height);
+                } else {
+                    Crafty.init();
+                }
             },
             
             /**
