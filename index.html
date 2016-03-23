@@ -3,12 +3,14 @@
     <head>
         <title>CraftyJS Practice</title>
         <script type="text/javascript" src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
+        <script type="text/javascript" src="js/jquery.cookie.js"></script>
         <script type="text/javascript" src="js/crafty.modified.js"></script>
         <script type="text/javascript" src="js/tron.js"></script>
         <script type="text/javascript">
             $(function () {
-                var game = Tron.instance("game-canvas");
-                Tron.enterScene('LandingPage', game);
+                var tron = Tron.instance();
+                tron.init('game-canvas');
+                tron.enterScene('LandingPage', tron);                
             });
         </script>
         
