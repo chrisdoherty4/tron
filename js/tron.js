@@ -24,7 +24,15 @@ $(function() {
                 /**
                  * Defines whether logging is enabled or not.
                  */
-                logging: true,
+                logging: true, 
+                
+                /**
+                 * Defines the default paths to look for images and audio files.
+                 */
+                assetPaths: {
+                    audio: "audio/",
+                    images: "images/"
+                },
                 
                 /**
                  * Defines the default loading functions
@@ -70,21 +78,21 @@ $(function() {
              */
             _assets: {
                 sprites: {
-                    "images/bike_cyan.png": {
+                    "bike_cyan.png": {
                         tile: 32,
                         tileh: 32,
                         map: {
                             Sprite_BikeCyan: [0, 0]
                         }
                     },
-                    "images/bike_orange.png": {
+                    "bike_orange.png": {
                         tile: 32,
                         tileh: 32,
                         map: {
                             Sprite_BikeOrange: [0, 0]
                         }
                     },
-                    "images/explosion.png": {
+                    "explosion.png": {
                         tile: 64,
                         tileh: 64,
                         map: {
@@ -96,14 +104,14 @@ $(function() {
                             Sprite_Explosion_5: [5, 0],
                         }
                     },
-                    "images/trail.png": {
+                    "trail.png": {
                         tile: 32,
                         tileh: 32,
                         map: {
                             Sprite_Trail: [0, 0]
                         }
                     },
-                    "images/speaker.png": {
+                    "speaker.png": {
                         tile: 512,
                         tileh: 512,
                         map: {
@@ -113,8 +121,8 @@ $(function() {
                     }
                 },
                 audio: {
-                    Background: ["audio/run_wild_edited.mp3"],
-                    Explosion: ["audio/explosion.mp3"]
+                    Background: ["run_wild_edited.mp3"],
+                    Explosion: ["explosion.mp3"]
                 }
             }, 
             
@@ -300,6 +308,9 @@ $(function() {
                 onLoad = onLoad || this._config.assetLoadHandlers.onLoad;
                 onProgress = onProgress || this._config.assetLoadHandlers.onProgress;
                 onError = onError || this._config.assetLoadHandlers.onError;
+                
+                // Apply the configuration for paths.
+                Crafty.paths(Tron._config.assetPaths);
                 
                 Crafty.load(this._assets, function () {
                     Tron._assetsLoaded = true;
@@ -862,7 +873,7 @@ $(function() {
                     /**
                      * Define required components
                      */
-                    required: '2D, Canvas, Sprite_SpeakerActive, Mouse',
+                    required: '2D, DOM, Sprite_SpeakerActive, Mouse',
                     
                     /**
                      * An ID of the audio track to pause.
@@ -952,6 +963,10 @@ $(function() {
             .bind('Click', function () {
                 Crafty.audio.stop();
                 game.start();
+            });
+            
+            Crafty.e('2D, HTML').attr({
+                
             });
                 
             Crafty.e("2D, Canvas, Particles").particles({

@@ -1,14 +1,19 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>CraftyJS Practice</title>
+        <title>Tron Server</title>
         <script type="text/javascript" src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
-        <script type="text/javascript" src="js/crafty.modified.js"></script>
-        <script type="text/javascript" src="js/tron.js"></script>
         <script type="text/javascript">
             $(function () {
-                var game = Tron.instance("game-canvas");
-                Tron.enterScene('LandingPage', game);
+                var conn = new WebSocket('ws://localhost:8080');
+                conn.onopen = function(e) {
+                    console.log("Connection established!");
+                    conn.send("Hello world!");
+                };
+
+                conn.onmessage = function(e) {
+                    console.log(e.data);
+                };
             });
         </script>
         
