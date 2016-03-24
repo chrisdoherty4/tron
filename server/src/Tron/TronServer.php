@@ -9,6 +9,8 @@ class TronServer implements MessageComponentInterface
 {
 
     protected $clients;
+    
+    
 
     public function __construct()
     {
@@ -19,8 +21,6 @@ class TronServer implements MessageComponentInterface
     {
         // Store the new connection to send messages to later
         $this->clients->attach($conn);
-
-        echo "New connection! ({$conn->resourceId})\n";
     }
 
     public function onMessage(ConnectionInterface $from, $msg)
